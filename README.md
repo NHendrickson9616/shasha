@@ -9,8 +9,12 @@ The two demos are intentionally lightweight and currently run independently. The
 
 ## Explainer video
 
-[Watch the Shasha explainer video](manim_animation/ShashaExplainer.mp4) to see
-how constrained semantic actions are rendered into valid Rust.
+<video controls preload="metadata" width="1280" src="manim_animation/ShashaExplainer-720p.mp4">
+  <a href="manim_animation/ShashaExplainer-720p.mp4">Watch the Shasha explainer video</a>
+</video>
+
+The explainer shows how constrained semantic actions are rendered into valid
+Rust.
 
 ## Quick start
 
