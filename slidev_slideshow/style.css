@@ -262,9 +262,11 @@ code,
 }
 
 .code-body code {
-  color: inherit;
-  background: transparent;
+  padding: 0 !important;
+  color: #eeeae5 !important;
+  background: transparent !important;
   font-size: inherit;
+  font-weight: 400;
 }
 
 .numbered-code > div {
