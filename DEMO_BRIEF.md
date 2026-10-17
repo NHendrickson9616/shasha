@@ -11,6 +11,14 @@ syntax is correct. Shasha makes the boundary visible. The model selects from
 legal, structured actions; the controller rejects anything illegal; and the
 renderer supplies the punctuation, braces, names, and indentation.
 
+Today, many LLM coding systems deal with invalid output by reprompting
+themselves over and over again: generate a program, run or inspect it, describe
+the error, and ask the model to try again. That can eventually produce a valid
+program, but it spends additional compute and time repairing a problem that
+could have been prevented at generation time. Shasha flips that trade-off by
+constraining the action space before rendering, rather than relying on repeated
+self-correction after the fact.
+
 The result is a small but inspectable generation system. Judges can see not just
 the code it produced, but the decisions that produced it and the constraints
 that prevented an invalid program.
@@ -22,7 +30,9 @@ that prevented an invalid program.
 Say:
 
 > “We usually think code generation means asking a model to write text. That
-> makes syntax, structure, and reliability the model's problem.”
+> makes syntax, structure, and reliability the model's problem. When the model
+> gets it wrong, modern systems often reprompt themselves repeatedly until a
+> valid program appears. That works, but it costs time and compute.”
 
 Do not start on a title slide. Start with the Shasha interface already open,
 with the three pathways visible.
@@ -134,7 +144,8 @@ application. The creative claim is a changed division of responsibility:
 | --- | --- |
 | The model emits text | The model selects structured actions |
 | Syntax is a prediction problem | Syntax is supplied by a renderer |
-| Invalid output is discovered afterwards | Illegal actions are masked before rendering |
+| Invalid output triggers repeated self-reprompting | Illegal actions are masked before rendering |
+| Extra repair attempts consume time and compute | Constraints prevent avoidable repair attempts |
 | The answer is judged as a finished blob | The semantic trace is inspectable beside the answer |
 
 The demo should make this reversal visible in under thirty seconds. If a judge
