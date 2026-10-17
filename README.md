@@ -9,8 +9,8 @@ The two demos are intentionally lightweight and currently run independently. The
 
 ## Explainer video
 
-<video controls preload="metadata" width="1280" src="manim_animation/ShashaExplainer-720p.mp4">
-  <a href="manim_animation/ShashaExplainer-720p.mp4">Watch the Shasha explainer video</a>
+<video controls preload="metadata" width="1280" src="https://github.com/NHendrickson9616/shasha/raw/refs/heads/main/manim_animation/ShashaExplainer-720p.mp4">
+  <a href="https://github.com/NHendrickson9616/shasha/raw/refs/heads/main/manim_animation/ShashaExplainer-720p.mp4">Watch the Shasha explainer video</a>
 </video>
 
 The explainer shows how constrained semantic actions are rendered into valid
