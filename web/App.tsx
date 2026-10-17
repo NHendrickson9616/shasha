@@ -17,6 +17,35 @@ type Scenario = {
   code: string[]
 }
 
+type AppMemory = {
+  currentRequest: string
+  recentRequests: string[]
+}
+
+const MEMORY_KEY = 'mopappa-memory-v1'
+
+const emptyMemory: AppMemory = {
+  currentRequest: '',
+  recentRequests: [],
+}
+
+function loadMemory(): AppMemory {
+  try {
+    const stored = window.localStorage.getItem(MEMORY_KEY)
+    if (!stored) return emptyMemory
+
+    const parsed = JSON.parse(stored) as Partial<AppMemory>
+    const currentRequest = typeof parsed.currentRequest === 'string' ? parsed.currentRequest : ''
+    const recentRequests = Array.isArray(parsed.recentRequests)
+      ? parsed.recentRequests.filter((item): item is string => typeof item === 'string').slice(0, 5)
+      : []
+
+    return { currentRequest, recentRequests }
+  } catch {
+    return emptyMemory
+  }
+}
+
 const scenarios: Scenario[] = [
   {
     match: /double|twice|multiply/i,
@@ -112,16 +141,38 @@ function MenuIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h12" /></svg>
 }
 
+function ResetIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3M6 6l1 11h6l1-11M9 9v5M11 9v5" /></svg>
+}
+
 export default function App() {
+  const [initialMemory] = useState(loadMemory)
+  const restoredScenario = initialMemory.currentRequest
+    ? scenarios.find((item) => item.match.test(initialMemory.currentRequest)) ?? scenarios[0]
+    : null
   const [input, setInput] = useState('')
-  const [scenario, setScenario] = useState<Scenario>(scenarios[0])
-  const [visibleSteps, setVisibleSteps] = useState(scenarios[0].actions.length)
+  const [request, setRequest] = useState(initialMemory.currentRequest)
+  const [scenario, setScenario] = useState<Scenario | null>(restoredScenario)
+  const [visibleSteps, setVisibleSteps] = useState(restoredScenario?.actions.length ?? 0)
   const [isRunning, setIsRunning] = useState(false)
   const [copied, setCopied] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [recentRequests, setRecentRequests] = useState<string[]>(initialMemory.recentRequests)
 
   useEffect(() => {
-    if (!isRunning) return
+    if (!request && recentRequests.length === 0) {
+      window.localStorage.removeItem(MEMORY_KEY)
+      return
+    }
+
+    window.localStorage.setItem(MEMORY_KEY, JSON.stringify({
+      currentRequest: request,
+      recentRequests,
+    } satisfies AppMemory))
+  }, [recentRequests, request])
+
+  useEffect(() => {
+    if (!isRunning || !scenario) return
     if (visibleSteps >= scenario.actions.length) {
       const finish = window.setTimeout(() => setIsRunning(false), 260)
       return () => window.clearTimeout(finish)
@@ -131,20 +182,22 @@ export default function App() {
   }, [isRunning, scenario, visibleSteps])
 
   const progress = useMemo(
-    () => Math.round((visibleSteps / scenario.actions.length) * 100),
-    [scenario.actions.length, visibleSteps],
+    () => scenario ? Math.round((visibleSteps / scenario.actions.length) * 100) : 0,
+    [scenario, visibleSteps],
   )
 
   const run = (raw: string) => {
     const request = raw.trim()
     if (!request) return
     const nextScenario = scenarios.find((item) => item.match.test(request)) ?? scenarios[0]
+    setRequest(request)
     setScenario(nextScenario)
     setVisibleSteps(0)
     setCopied(false)
     setIsRunning(true)
     setInput('')
     setSidebarOpen(false)
+    setRecentRequests((current) => [request, ...current.filter((item) => item !== request)].slice(0, 5))
     window.requestAnimationFrame(() => {
       document.querySelector('.conversation')?.scrollTo({ top: 9999, behavior: 'smooth' })
     })
@@ -156,9 +209,26 @@ export default function App() {
   }
 
   const copyCode = async () => {
+    if (!scenario) return
     await navigator.clipboard.writeText(scenario.code.join('\n'))
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
+  }
+
+  const startNewConversation = () => {
+    setRequest('')
+    setScenario(null)
+    setVisibleSteps(0)
+    setIsRunning(false)
+    setCopied(false)
+    setInput('')
+    setSidebarOpen(false)
+  }
+
+  const resetMemory = () => {
+    window.localStorage.removeItem(MEMORY_KEY)
+    setRecentRequests([])
+    startNewConversation()
   }
 
   return (
@@ -171,21 +241,26 @@ export default function App() {
           <button className="sidebar-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
         </div>
 
-        <button className="new-chat" type="button" onClick={() => run(scenarios[0].request)}><PlusIcon /> New conversation</button>
+        <button className="new-chat" type="button" onClick={startNewConversation}><PlusIcon /> New conversation</button>
 
         <nav className="conversation-nav" aria-label="Recent conversations">
-          <span>Recent</span>
-          {scenarios.map((item) => (
+          <div className="conversation-nav-heading"><span>Recent</span><small>Saved locally</small></div>
+          {recentRequests.length === 0 && <p className="no-recents">No conversations yet</p>}
+          {recentRequests.map((item) => (
             <button
               type="button"
-              key={item.request}
-              onClick={() => run(item.request)}
-              className={scenario.request === item.request ? 'active' : ''}
+              key={item}
+              onClick={() => run(item)}
+              className={request === item ? 'active' : ''}
             >
-              {item.request}
+              {item}
             </button>
           ))}
         </nav>
+
+        <button className="reset-memory" type="button" onClick={resetMemory} disabled={recentRequests.length === 0 && !request}>
+          <ResetIcon /> Reset memory
+        </button>
 
         <div className="sidebar-note">
           <span>What is different?</span>
@@ -229,10 +304,10 @@ export default function App() {
               </div>
             </section>
 
-            <section className="thread" aria-label="Conversation">
+            {scenario && <section className="thread" aria-label="Conversation">
               <article className="message user-message">
                 <div className="message-label">You</div>
-                <div className="user-bubble">{scenario.request}</div>
+                <div className="user-bubble">{request}</div>
               </article>
 
               <article className="message assistant-message">
@@ -281,7 +356,7 @@ export default function App() {
                   <div className="validity-note"><CheckIcon /><p><strong>Valid by construction.</strong> Punctuation, braces, and indentation are supplied by the renderer rather than predicted by the model.</p></div>
                 </div>
               </article>
-            </section>
+            </section>}
           </div>
         </div>
 
