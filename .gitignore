@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+output/
+
+# Local tooling and test artifacts
+.playwright-cli/
+.playwright-cli-previous/
+coverage/
+playwright-report/
+test-results/
+
+# TypeScript incremental build metadata
+*.tsbuildinfo
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editor and operating system files
+.DS_Store
+.idea/
+.vscode/
