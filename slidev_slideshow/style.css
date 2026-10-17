@@ -251,6 +251,28 @@ code,
   line-height: 1.75;
 }
 
+.code-body {
+  display: grid;
+  gap: 10px;
+  padding: 22px 21px;
+  color: #eeeae5;
+  font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.code-body code {
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+}
+
+.numbered-code > div {
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  gap: 10px;
+}
+
 .raw-window {
   min-height: 165px;
 }
@@ -503,7 +525,8 @@ code,
   min-height: 345px;
 }
 
-.final-code pre {
+.final-code pre,
+.final-code .code-body {
   min-height: 245px;
   font-size: 16px;
 }
@@ -644,7 +667,8 @@ code,
   min-height: 330px;
 }
 
-.checked-code pre {
+.checked-code pre,
+.checked-code .code-body {
   font-size: 14px;
   line-height: 1.65;
 }

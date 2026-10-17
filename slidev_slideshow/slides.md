@@ -149,9 +149,11 @@ layout: full
 
     <section class="code-window final-code">
       <div class="code-title"><span>RUST</span><small>Rendered output</small></div>
-      <pre><code><span class="line-no">1</span> fn calculate(left: i32, right: i32) -> i32 {
-<span class="line-no">2</span>     left + right
-<span class="line-no">3</span> }</code></pre>
+      <div class="code-body numbered-code">
+        <div><span class="line-no">1</span><code>fn calculate(left: i32, right: i32) -&gt; i32 &#123;</code></div>
+        <div><span class="line-no">2</span><code>&nbsp;&nbsp;&nbsp;&nbsp;left + right</code></div>
+        <div><span class="line-no">3</span><code>&#125;</code></div>
+      </div>
       <div class="code-meta"><span>Names used</span><code>@0 → calculate&nbsp;&nbsp; @1 → left&nbsp;&nbsp; @2 → right</code></div>
     </section>
   </div>
@@ -197,12 +199,14 @@ layout: full
 
     <section class="code-window checked-code">
       <div class="code-title"><span>RUST</span><small>Final rendered output</small></div>
-      <pre><code>fn calculate(left: i32, right: i32)
-    -> Option&lt;(i32, i32)&gt; {
-    let sum = left.checked_add(right)?;
-    let product = left.checked_mul(right)?;
-    Some((sum, product))
-}</code></pre>
+      <div class="code-body">
+        <div><code>fn calculate(left: i32, right: i32)</code></div>
+        <div><code>&nbsp;&nbsp;&nbsp;&nbsp;-&gt; Option&lt;(i32, i32)&gt; &#123;</code></div>
+        <div><code>&nbsp;&nbsp;&nbsp;&nbsp;let sum = left.checked_add(right)?;</code></div>
+        <div><code>&nbsp;&nbsp;&nbsp;&nbsp;let product = left.checked_mul(right)?;</code></div>
+        <div><code>&nbsp;&nbsp;&nbsp;&nbsp;Some((sum, product))</code></div>
+        <div><code>&#125;</code></div>
+      </div>
     </section>
   </div>
 </div>
