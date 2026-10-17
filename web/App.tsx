@@ -214,10 +214,11 @@ export default function App() {
           </section>
         </>}
 
-        {history.length > 0 && <section className="thread" aria-label="Conversation">
+        {history.length > 0 && <section className="thread" aria-label="Conversation" aria-live="polite">
           {history.map((id, messageIndex) => {
             const example = examples[id]
-            return <div className="exchange" key={id}>
+            const isCurrent = messageIndex === history.length - 1
+            return <div className={`exchange ${isCurrent ? 'is-current' : ''}`} key={id}>
               <article className="message user-message">
                 <div className="message-label">You</div>
                 <div className="user-bubble">{example.request}</div>

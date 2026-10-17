@@ -314,6 +314,62 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColo
 .exchange + .exchange { margin-top: 62px; padding-top: 50px; border-top: 1px solid var(--line); }
 .exchange .assistant-message { margin-bottom: 0; }
 
+/* A new exchange resolves in the same order as the interpreter: request, structure, output. */
+.exchange.is-current .user-message { animation: message-arrive .34s cubic-bezier(.2, .75, .25, 1) both; }
+.exchange.is-current .assistant-avatar { animation: response-arrive .36s .16s cubic-bezier(.2, .75, .25, 1) both; }
+.exchange.is-current .assistant-content > .message-label { animation: response-arrive .32s .2s ease-out both; }
+.exchange.is-current .assistant-content > h2 { animation: response-arrive .38s .24s cubic-bezier(.2, .75, .25, 1) both; }
+.exchange.is-current .response-summary { animation: response-arrive .38s .3s ease-out both; }
+.exchange.is-current .section-heading { animation: response-arrive .3s .4s ease-out both; }
+.exchange.is-current .trace-row { animation: decision-resolve .34s cubic-bezier(.2, .75, .25, 1) both; }
+.exchange.is-current .trace-row:nth-child(1) { animation-delay: .48s; }
+.exchange.is-current .trace-row:nth-child(2) { animation-delay: .57s; }
+.exchange.is-current .trace-row:nth-child(3) { animation-delay: .66s; }
+.exchange.is-current .trace-row:nth-child(4) { animation-delay: .75s; }
+.exchange.is-current .trace-check path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: confirm-decision .25s ease-out both; }
+.exchange.is-current .trace-row:nth-child(1) .trace-check path { animation-delay: .68s; }
+.exchange.is-current .trace-row:nth-child(2) .trace-check path { animation-delay: .77s; }
+.exchange.is-current .trace-row:nth-child(3) .trace-check path { animation-delay: .86s; }
+.exchange.is-current .trace-row:nth-child(4) .trace-check path { animation-delay: .95s; }
+.exchange.is-current .code-panel { animation: code-panel-arrive .42s .5s cubic-bezier(.2, .75, .25, 1) both; }
+.exchange.is-current .code-line { animation: code-line-arrive .26s ease-out both; }
+.exchange.is-current .code-line:nth-child(1) { animation-delay: .69s; }
+.exchange.is-current .code-line:nth-child(2) { animation-delay: .76s; }
+.exchange.is-current .code-line:nth-child(3) { animation-delay: .83s; }
+.exchange.is-current .code-line:nth-child(4) { animation-delay: .9s; }
+.exchange.is-current .code-line:nth-child(5) { animation-delay: .97s; }
+.exchange.is-current .code-meta { animation: response-arrive .28s .93s ease-out both; }
+.exchange.is-current .validity-note { animation: response-arrive .34s 1.02s ease-out both; }
+
+@keyframes message-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes response-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes decision-resolve {
+  from { opacity: 0; transform: translateX(-7px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes confirm-decision {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes code-panel-arrive {
+  from { opacity: 0; transform: translateY(8px) scale(.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes code-line-arrive {
+  from { opacity: 0; transform: translateX(5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .choice-tray-wrap { position: relative; z-index: 3; padding: 11px 24px 8px; border-top: 1px solid rgba(222, 217, 210, .82); background: var(--paper); }
 .choice-tray { width: min(100%, 820px); margin: 0 auto; padding: 12px 14px 13px; border: 1px solid #cfc8c0; border-radius: 12px; background: #fff; box-shadow: 0 5px 20px rgba(61, 43, 37, .08); }
 .choice-tray-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-bottom: 9px; }
@@ -339,4 +395,19 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColo
   .choice-tray-heading small, .choice-tray-wrap > p { display: none; }
   .choice-tray-heading { margin-bottom: 7px; }
   .choice-options button { min-width: 245px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exchange.is-current .user-message,
+  .exchange.is-current .assistant-avatar,
+  .exchange.is-current .assistant-content > .message-label,
+  .exchange.is-current .assistant-content > h2,
+  .exchange.is-current .response-summary,
+  .exchange.is-current .section-heading,
+  .exchange.is-current .trace-row,
+  .exchange.is-current .trace-check path,
+  .exchange.is-current .code-panel,
+  .exchange.is-current .code-line,
+  .exchange.is-current .code-meta,
+  .exchange.is-current .validity-note { animation: none; }
 }
