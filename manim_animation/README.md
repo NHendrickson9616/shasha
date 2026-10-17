@@ -5,6 +5,8 @@ This folder contains a self-contained motion explainer based on
 the model selects constrained semantic actions, and the surrounding system
 renders valid Rust.
 
+`ShashaExplainer.mp4` is the committed 1080p master render.
+
 ## Render
 
 Create a virtual environment and install the pinned dependency:
