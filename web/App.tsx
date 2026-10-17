@@ -73,7 +73,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <a className="brand" href="#top" aria-label="MoPaPPa home">MoPaPPa</a>
+        <a className="brand" href="#top" aria-label="shasha home">shasha</a>
         <span>Rust code demo</span>
       </header>
 
@@ -81,7 +81,7 @@ export default function App() {
         <section className="intro">
           <p className="eyebrow">STRUCTURE FIRST. CODE SECOND.</p>
           <h1>Describe a small Rust function.</h1>
-          <p>MoPaPPa turns your request into program structure, then writes the Rust syntax for you.</p>
+          <p>shasha turns your request into program structure, then writes the Rust syntax for you.</p>
 
           <form onSubmit={submit}>
             <label htmlFor="prompt">What should it build?</label>

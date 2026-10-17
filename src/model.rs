@@ -1,14 +1,14 @@
 //! Minimal causal transformer and controller-routed action heads.
 
-use candle_core::{DType, Result, Tensor};
+use candle_core::{Result, Tensor};
 use candle_nn::{Embedding, LayerNorm, Linear, Module, VarBuilder, embedding, layer_norm, linear};
 
-use crate::controller::Need;
+use crate::controller::{Need, SymbolId};
 
-pub const VOCAB_SIZE: usize = 64;
+pub const VOCAB_SIZE: usize = 256;
 const WIDTH: usize = 16;
 const HEADS: usize = 2;
-const MAX_LEN: usize = 32;
+pub const MAX_LEN: usize = 128;
 
 pub struct TinyTransformer {
     token: Embedding,
@@ -24,7 +24,13 @@ pub struct TinyTransformer {
     mlp_in: Linear,
     mlp_out: Linear,
     root_head: Linear,
-    expression_head: Linear,
+    no_parameter_head: Linear,
+    parameter_head: Linear,
+    two_parameter_head: Linear,
+    symbol_key: Embedding,
+    symbol_query: Linear,
+    name_start_head: Linear,
+    name_continue_head: Linear,
 }
 
 impl TinyTransformer {
@@ -32,9 +38,9 @@ impl TinyTransformer {
         Ok(Self {
             token: embedding(VOCAB_SIZE, WIDTH, vb.pp("token"))?,
             position: embedding(MAX_LEN, WIDTH, vb.pp("position"))?,
-            // IDs 0..2 denote root actions; 2..5 denote expression actions.
-            action: embedding(5, WIDTH, vb.pp("action"))?,
-            need: embedding(2, WIDTH, vb.pp("need"))?,
+            // Previous actions use disjoint slots for each head's local action IDs.
+            action: embedding(67, WIDTH, vb.pp("action"))?,
+            need: embedding(7, WIDTH, vb.pp("need"))?,
             q: linear(WIDTH, WIDTH, vb.pp("q"))?,
             k: linear(WIDTH, WIDTH, vb.pp("k"))?,
             v: linear(WIDTH, WIDTH, vb.pp("v"))?,
@@ -43,8 +49,14 @@ impl TinyTransformer {
             mlp_norm: layer_norm(WIDTH, 1e-5, vb.pp("mlp_norm"))?,
             mlp_in: linear(WIDTH, 32, vb.pp("mlp_in"))?,
             mlp_out: linear(32, WIDTH, vb.pp("mlp_out"))?,
-            root_head: linear(WIDTH, 2, vb.pp("root_head"))?,
-            expression_head: linear(WIDTH, 3, vb.pp("expression_head"))?,
+            root_head: linear(WIDTH, 3, vb.pp("root_head"))?,
+            no_parameter_head: linear(WIDTH, 4, vb.pp("no_parameter_head"))?,
+            parameter_head: linear(WIDTH, 2, vb.pp("parameter_head"))?,
+            two_parameter_head: linear(WIDTH, 3, vb.pp("two_parameter_head"))?,
+            symbol_key: embedding(2, WIDTH, vb.pp("symbol_key"))?,
+            symbol_query: linear(WIDTH, WIDTH, vb.pp("symbol_query"))?,
+            name_start_head: linear(WIDTH, 26, vb.pp("name_start_head"))?,
+            name_continue_head: linear(WIDTH, 27, vb.pp("name_continue_head"))?,
         })
     }
 
@@ -54,7 +66,21 @@ impl TinyTransformer {
         prompt: &[u32],
         history: &[(Need, usize)],
         current: Need,
+        symbols: &[SymbolId],
     ) -> Result<Tensor> {
+        if current == Need::SymbolPointer {
+            if symbols.is_empty()
+                || symbols.len() > 2
+                || symbols.iter().any(|symbol| !(1..=2).contains(&symbol.0))
+                || (symbols.len() == 2 && symbols[0] == symbols[1])
+            {
+                candle_core::bail!(
+                    "pointer head requires one or two distinct live symbol IDs (1 or 2)"
+                )
+            }
+        } else if !symbols.is_empty() {
+            candle_core::bail!("fixed heads require an empty symbol list")
+        }
         let len = prompt.len() + history.len() + 1;
         if prompt.is_empty() || len > MAX_LEN || prompt.iter().any(|&id| id as usize >= VOCAB_SIZE)
         {
@@ -69,8 +95,13 @@ impl TinyTransformer {
         }
         for &(need, choice) in history {
             let action_id = match need {
-                Need::Root if choice < 2 => choice,
-                Need::Expression if choice < 3 => 2 + choice,
+                Need::Root if choice < 3 => choice,
+                Need::NoParameterExpression if choice < 4 => 3 + choice,
+                Need::ParameterExpression if choice < 2 => 7 + choice,
+                Need::TwoParameterExpression if choice < 3 => 9 + choice,
+                Need::SymbolPointer if choice < 2 => 12 + choice,
+                Need::NameStart if choice < 26 => 14 + choice,
+                Need::NameContinue if choice < 27 => 40 + choice,
                 _ => candle_core::bail!("invalid action history"),
             };
             let action = self
@@ -119,44 +150,123 @@ impl TinyTransformer {
         let hidden = (hidden + feed)?.narrow(1, len - 1, 1)?.squeeze(1)?;
         match current {
             Need::Root => self.root_head.forward(&hidden),
-            Need::Expression => self.expression_head.forward(&hidden),
+            Need::NoParameterExpression => self.no_parameter_head.forward(&hidden),
+            Need::ParameterExpression => self.parameter_head.forward(&hidden),
+            Need::TwoParameterExpression => self.two_parameter_head.forward(&hidden),
+            Need::SymbolPointer => {
+                let indices: Vec<u32> = symbols.iter().map(|symbol| symbol.0 - 1).collect();
+                let keys = self
+                    .symbol_key
+                    .forward(&Tensor::new(indices.as_slice(), device)?)?;
+                self.symbol_query
+                    .forward(&hidden)?
+                    .matmul(&keys.t()?.contiguous()?)
+            }
+            Need::NameStart => self.name_start_head.forward(&hidden),
+            Need::NameContinue => self.name_continue_head.forward(&hidden),
         }
     }
-}
-
-/// Mask illegal candidate IDs without changing the head's stable vocabulary.
-pub fn mask_logits(logits: &Tensor, legal: &Tensor) -> Result<Tensor> {
-    if logits.dims() != legal.dims() || legal.dtype() != DType::U8 {
-        candle_core::bail!("legal mask must be U8 and have the same shape as logits")
-    }
-    let values = legal.to_vec2::<u8>()?;
-    if values
-        .iter()
-        .any(|row| !row.contains(&1) || row.iter().any(|&value| value > 1))
-    {
-        candle_core::bail!("each mask row must contain a legal choice and only binary values")
-    }
-    let fill = Tensor::full(f32::NEG_INFINITY, logits.shape(), logits.device())?;
-    legal.eq(0u8)?.where_cond(&fill, logits)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::Device;
+    use candle_core::{DType, Device};
     use candle_nn::VarMap;
 
-    #[test]
-    fn heads_and_mask_keep_stable_candidate_slots() -> Result<()> {
+    fn model() -> Result<TinyTransformer> {
         let vars = VarMap::new();
-        let model = TinyTransformer::new(VarBuilder::from_varmap(&vars, DType::F32, &Device::Cpu))?;
-        assert_eq!(model.score(&[1], &[], Need::Root)?.dims(), &[1, 2]);
-        let logits = model.score(&[1], &[(Need::Root, 0)], Need::Expression)?;
-        assert_eq!(logits.dims(), &[1, 3]);
-        let legal = Tensor::new(&[[1u8, 1, 0]], &Device::Cpu)?;
-        let masked = mask_logits(&logits, &legal)?.to_vec2::<f32>()?;
-        assert_eq!(masked[0][2], f32::NEG_INFINITY);
-        assert!(mask_logits(&logits, &Tensor::new(&[[0u8, 0, 0]], &Device::Cpu)?).is_err());
+        TinyTransformer::new(VarBuilder::from_varmap(&vars, DType::F32, &Device::Cpu))
+    }
+
+    #[test]
+    fn only_the_selected_head_scores_its_local_choices() -> Result<()> {
+        let model = model()?;
+        assert_eq!(model.action.embeddings().dims(), &[67, WIDTH]);
+        for (need, count) in [
+            (Need::Root, 3),
+            (Need::NoParameterExpression, 4),
+            (Need::ParameterExpression, 2),
+            (Need::TwoParameterExpression, 3),
+            (Need::NameStart, 26),
+            (Need::NameContinue, 27),
+        ] {
+            assert_eq!(model.score(&[1], &[], need, &[])?.dims(), &[1, count]);
+            assert!(model.score(&[1], &[], need, &[SymbolId(1)]).is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn pointer_scores_live_symbols_in_provided_order() -> Result<()> {
+        let model = model()?;
+        let first = model.score(&[1], &[], Need::SymbolPointer, &[SymbolId(1)])?;
+        assert_eq!(first.dims(), &[1, 1]);
+        let second = model.score(&[1], &[], Need::SymbolPointer, &[SymbolId(2)])?;
+        assert_eq!(second.dims(), &[1, 1]);
+        let forward = model.score(&[1], &[], Need::SymbolPointer, &[SymbolId(1), SymbolId(2)])?;
+        let reverse = model.score(&[1], &[], Need::SymbolPointer, &[SymbolId(2), SymbolId(1)])?;
+        assert_eq!(forward.dims(), &[1, 2]);
+        assert_eq!(reverse.dims(), &[1, 2]);
+        let forward = forward.to_vec2::<f32>()?[0].clone();
+        let reverse = reverse.to_vec2::<f32>()?[0].clone();
+        assert!((forward[0] - reverse[1]).abs() < 1e-5);
+        assert!((forward[1] - reverse[0]).abs() < 1e-5);
+        assert!((first.to_vec2::<f32>()?[0][0] - forward[0]).abs() < 1e-5);
+        assert!((second.to_vec2::<f32>()?[0][0] - forward[1]).abs() < 1e-5);
+        for invalid in [
+            vec![],
+            vec![SymbolId(0)],
+            vec![SymbolId(3)],
+            vec![SymbolId(1), SymbolId(1)],
+            vec![SymbolId(1), SymbolId(2), SymbolId(1)],
+        ] {
+            assert!(
+                model
+                    .score(&[1], &[], Need::SymbolPointer, &invalid)
+                    .is_err()
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn history_slots_accept_only_local_choices() -> Result<()> {
+        let model = model()?;
+        for choice in 0..3 {
+            assert_eq!(
+                model
+                    .score(
+                        &[1],
+                        &[(Need::TwoParameterExpression, choice)],
+                        Need::Root,
+                        &[]
+                    )?
+                    .dims(),
+                &[1, 3]
+            );
+        }
+        for (need, last_choice) in [
+            (Need::Root, 2),
+            (Need::NoParameterExpression, 3),
+            (Need::ParameterExpression, 1),
+            (Need::TwoParameterExpression, 2),
+            (Need::SymbolPointer, 1),
+            (Need::NameStart, 25),
+            (Need::NameContinue, 26),
+        ] {
+            assert_eq!(
+                model
+                    .score(&[1], &[(need, last_choice)], Need::Root, &[])?
+                    .dims(),
+                &[1, 3]
+            );
+            assert!(
+                model
+                    .score(&[1], &[(need, last_choice + 1)], Need::Root, &[])
+                    .is_err()
+            );
+        }
         Ok(())
     }
 }
