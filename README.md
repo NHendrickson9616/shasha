@@ -7,6 +7,11 @@ Shasha is a small research/demo project exploring structured Rust code generatio
 
 The two demos are intentionally lightweight and currently run independently. The UI does not call the Rust model, and the Rust model is not trained to understand natural-language prompts.
 
+## Explainer video
+
+[Watch the Shasha explainer video](manim_animation/ShashaExplainer.mp4) to see
+how constrained semantic actions are rendered into valid Rust.
+
 ## Quick start
 
 ### Guided examples UI
