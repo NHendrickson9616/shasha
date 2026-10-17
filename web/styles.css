@@ -315,6 +315,8 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColo
 .exchange .assistant-message { margin-bottom: 0; }
 
 /* A new exchange resolves in the same order as the interpreter: request, structure, output. */
+.exchange.is-pending .user-message,
+.exchange.is-pending .assistant-message { visibility: hidden; }
 .exchange.is-current .user-message { animation: message-arrive .34s cubic-bezier(.2, .75, .25, 1) both; }
 .exchange.is-current .assistant-avatar { animation: response-arrive .36s .16s cubic-bezier(.2, .75, .25, 1) both; }
 .exchange.is-current .assistant-content > .message-label { animation: response-arrive .32s .2s ease-out both; }

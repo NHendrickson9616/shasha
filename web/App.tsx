@@ -161,18 +161,26 @@ export default function App() {
   const [history, setHistory] = useState<string[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [enteringId, setEnteringId] = useState<string | null>(null)
   const current = currentId ? examples[currentId] : null
   const activePath = current ? pathways.find((path) => path.id === current.pathway) : null
 
+  const revealExchange = (id: string) => {
+    setEnteringId(null)
+    window.requestAnimationFrame(() => {
+      document.querySelector('.exchange:last-child')?.scrollIntoView({ behavior: 'auto', block: 'start' })
+      window.requestAnimationFrame(() => setEnteringId(id))
+    })
+  }
   const start = (path: Pathway) => {
     setCurrentId(path.start); setHistory([path.start]); setCopiedId(null); setSidebarOpen(false)
-    window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.querySelector('.exchange:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+    revealExchange(path.start)
   }
   const continueTo = (id: string) => {
     setCurrentId(id); setHistory((items) => [...items, id]); setCopiedId(null)
-    window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.querySelector('.exchange:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+    revealExchange(id)
   }
-  const reset = () => { setCurrentId(null); setHistory([]); setSidebarOpen(false) }
+  const reset = () => { setCurrentId(null); setHistory([]); setEnteringId(null); setSidebarOpen(false) }
   const copyCode = async (example: Example) => {
     await navigator.clipboard.writeText(example.code.join('\n'))
     setCopiedId(example.id); window.setTimeout(() => setCopiedId(null), 1800)
@@ -218,7 +226,8 @@ export default function App() {
           {history.map((id, messageIndex) => {
             const example = examples[id]
             const isCurrent = messageIndex === history.length - 1
-            return <div className={`exchange ${isCurrent ? 'is-current' : ''}`} key={id}>
+            const exchangeState = isCurrent ? enteringId === id ? 'is-current' : 'is-pending' : ''
+            return <div className={`exchange ${exchangeState}`} key={id}>
               <article className="message user-message">
                 <div className="message-label">You</div>
                 <div className="user-bubble">{example.request}</div>
