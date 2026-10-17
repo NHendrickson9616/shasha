@@ -553,7 +553,9 @@ code,
 }
 
 .code-meta code {
+  padding: 0 !important;
   color: #d1aaa5;
+  background: transparent !important;
   font-size: 11px;
 }
 
