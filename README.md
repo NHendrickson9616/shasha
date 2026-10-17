@@ -9,9 +9,11 @@ The UI does not call the Rust model. The model has random weights and has not le
 
 ## Explainer video
 
-[![Watch the Shasha explainer video](manim_animation/ShashaExplainer.jpg)](https://youtu.be/FegaRcG-3I4)
+<video controls preload="metadata" poster="https://raw.githubusercontent.com/NHendrickson9616/shasha/main/manim_animation/ShashaExplainer.jpg" width="1280" src="https://raw.githubusercontent.com/NHendrickson9616/shasha/main/manim_animation/ShashaExplainer.mp4">
+ <a href="https://raw.githubusercontent.com/NHendrickson9616/shasha/main/manim_animation/ShashaExplainer.mp4">Watch the explainer video</a>
+</video>
 
-Click the preview to watch the explainer on YouTube. It shows how constrained semantic actions are rendered into valid Rust.
+The explainer shows how constrained semantic actions are rendered into valid Rust.
 
 ## Quick start
 
