@@ -15,6 +15,16 @@ Click the preview to watch the explainer video on YouTube.
 
 The explainer shows how constrained semantic actions are rendered into valid Rust.
 
+## UI screenshots
+
+### Guided code examples
+
+![Shasha guided code examples showing a calculator pathway](img1.png)
+
+### Welcome screen
+
+![Shasha welcome screen with the available example pathways](img2.png)
+
 ## Quick start
 
 ### Guided examples UI
