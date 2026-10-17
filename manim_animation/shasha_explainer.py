@@ -226,8 +226,6 @@ class ShashaExplainer(MovingCameraScene):
             2.45,
             16,
         ).move_to([0.0, 0.3, 0])
-        raw_label = tag("RAW TEXT", SUBTLE, SIDEBAR).next_to(raw, UP, buff=0.18)
-
         rejected_box = panel(2.35, 1.35, RED_SOFT, RED).move_to([4.75, 0.3, 0])
         cross = txt("×", 36, RED, SANS).move_to(rejected_box.get_left() + RIGHT * 0.42)
         rejected_label = txt("REJECTED", 14, RED, MONO, "BOLD")
@@ -242,7 +240,7 @@ class ShashaExplainer(MovingCameraScene):
         self.play(FadeIn(lockup), FadeIn(label, shift=DOWN * 0.08), run_time=0.6)
         self.play(Write(title), run_time=0.9)
         self.play(FadeIn(model_group, shift=RIGHT * 0.2), run_time=0.6)
-        self.play(Create(first_arrow), FadeIn(raw), FadeIn(raw_label), run_time=0.9)
+        self.play(Create(first_arrow), FadeIn(raw), run_time=0.9)
         self.play(Create(second_arrow), FadeIn(rejected, shift=RIGHT * 0.15), run_time=0.8)
 
         repair_arrow = CurvedArrow(
@@ -313,7 +311,7 @@ class ShashaExplainer(MovingCameraScene):
             stroke_width=0,
             fill_color=SIDEBAR,
             fill_opacity=1,
-        ).next_to(header, DOWN, buff=0.35)
+        ).next_to(header, DOWN, buff=0.35).set_x(0)
         prompt_label = txt("REQUEST", 14, SUBTLE, MONO, "BOLD")
         prompt = txt("Create a function that adds two integers", 22, INK, SANS, "MEDIUM")
         prompt_group = VGroup(prompt_label, prompt).arrange(RIGHT, buff=0.35)
@@ -408,8 +406,10 @@ class ShashaExplainer(MovingCameraScene):
         meaning_title = txt("STRUCTURED MEANING", 14, RED, MONO, "BOLD")
         meaning_title.next_to(addition_tags, UP, buff=0.28).align_to(addition_tags, LEFT)
         explain = txt("One operation. One integer result.", 25, INK, SERIF, "BOLD")
+        fit_width(explain, 5.45)
         explain.next_to(addition_tags, DOWN, buff=0.38).align_to(addition_tags, LEFT)
         request = txt("“Create a function that adds two integers.”", 19, MUTED, SERIF)
+        fit_width(request, 5.45)
         request.next_to(explain, DOWN, buff=0.2).align_to(explain, LEFT)
         left_group = VGroup(meaning_title, addition_tags, explain, request)
 
@@ -427,8 +427,12 @@ class ShashaExplainer(MovingCameraScene):
             tag("Add", RED, RED_SOFT),
             tag("Mul", RED, RED_SOFT),
         ).arrange(RIGHT, buff=0.12).move_to(addition_tags)
-        multiply_explain = txt("Two results reuse the same inputs.", 25, INK, SERIF, "BOLD").move_to(explain, aligned_edge=LEFT)
-        multiply_request = txt("“Please now add multiplication.”", 19, MUTED, SERIF).move_to(request, aligned_edge=LEFT)
+        multiply_explain = txt("Two results reuse the same inputs.", 25, INK, SERIF, "BOLD")
+        multiply_request = txt("“Please now add multiplication.”", 19, MUTED, SERIF)
+        fit_width(multiply_explain, 5.45)
+        fit_width(multiply_request, 5.45)
+        multiply_explain.move_to(explain, aligned_edge=LEFT)
+        multiply_request.move_to(request, aligned_edge=LEFT)
         multiply_code = code_block(
             [
                 "fn calculate(left: i32, right: i32) -> (i32, i32) {",
@@ -455,8 +459,12 @@ class ShashaExplainer(MovingCameraScene):
             tag("checked_add", GREEN, GREEN_SOFT),
             tag("checked_mul", GREEN, GREEN_SOFT),
         ).arrange(RIGHT, buff=0.12).move_to(multiply_tags)
-        checked_explain = txt("Failure becomes explicit in the result.", 25, INK, SERIF, "BOLD").move_to(multiply_explain, aligned_edge=LEFT)
-        checked_request = txt("“Prevent integer overflow.”", 19, MUTED, SERIF).move_to(multiply_request, aligned_edge=LEFT)
+        checked_explain = txt("Failure becomes explicit in the result.", 25, INK, SERIF, "BOLD")
+        checked_request = txt("“Prevent integer overflow.”", 19, MUTED, SERIF)
+        fit_width(checked_explain, 5.45)
+        fit_width(checked_request, 5.45)
+        checked_explain.move_to(multiply_explain, aligned_edge=LEFT)
+        checked_request.move_to(multiply_request, aligned_edge=LEFT)
         checked_code = code_block(
             [
                 "fn calculate(left: i32, right: i32)",
@@ -599,14 +607,14 @@ class ShashaExplainer(MovingCameraScene):
             row = VGroup(action_tag, copy, arrow, result_text, shape_tag).arrange(RIGHT, buff=0.25)
             stage_groups.add(row)
         stage_groups.arrange(DOWN, buff=0.48, aligned_edge=LEFT)
-        fit_width(stage_groups, 12.6)
-        stage_groups.move_to([0, -0.65, 0], aligned_edge=LEFT)
+        fit_width(stage_groups, 11.4)
+        stage_groups.move_to([0.35, -0.65, 0])
 
-        spine = Line([-5.95, 0.35, 0], [-5.95, -2.35, 0], color=RED, stroke_width=2)
+        spine_x = stage_groups.get_left()[0] - 0.42
+        spine = Line([spine_x, 0.35, 0], [spine_x, -2.35, 0], color=RED, stroke_width=2)
         dots = VGroup(*[Circle(0.07, color=RED, fill_color=RED, fill_opacity=1) for _ in range(3)])
         for dot, row in zip(dots, stage_groups):
             dot.move_to([spine.get_x(), row.get_y(), 0])
-            row.shift(RIGHT * 0.55)
 
         proof = txt("Authored route. Reproducible clicks. The same structured representation.", 22, MUTED, SERIF)
         proof.to_edge(DOWN, buff=0.42)
