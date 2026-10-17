@@ -200,7 +200,7 @@ export default function App() {
           <span>{path.number}</span><div><strong>{path.title}</strong><small>3 steps</small></div>
         </button>)}
       </nav>
-      <div className="sidebar-note"><span>Fixed paths by design</span><p>Every button follows a written route. There is no free-text prompt or open-ended chat response.</p><a href="#method">Read the method <span aria-hidden="true">↗</span></a></div>
+      <div className="sidebar-note"><span>Fixed paths by design</span><p>Every button follows a written route. There is no free-text prompt or open-ended chat response.</p></div>
       <div className="profile"><span className="profile-mark">B</span><div><strong>Research workspace</strong><small>Rust code examples</small></div><span aria-hidden="true">•••</span></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
@@ -209,19 +209,6 @@ export default function App() {
       <header className="topbar"><div><strong>Guided code examples</strong><span>Guided conversation</span></div><span className="route-count">3 fixed pathways</span></header>
       <div className="conversation" id="top">
         <div className="conversation-inner">
-        {!current && <>
-          <section className="explainer" id="method" aria-labelledby="explainer-title">
-            <span className="eyebrow">Guided examples</span>
-            <h1 id="explainer-title">The model chooses meaning.<br />The system handles syntax.</h1>
-            <p className="explainer-copy">Choose an example below to begin. Each response offers a fixed next message, so the conversation stays predictable and reviewable.</p>
-            <div className="method-line" aria-label="Example method">
-              <div><span>01</span><strong>Prompt</strong><p>Choose one of three authored messages.</p></div>
-              <div><span>02</span><strong>Inspect</strong><p>See the choices behind the output.</p></div>
-              <div><span>03</span><strong>Reply</strong><p>Continue with a suggested follow-up message.</p></div>
-            </div>
-          </section>
-        </>}
-
         {history.length > 0 && <section className="thread" aria-label="Conversation" aria-live="polite">
           {history.map((id, messageIndex) => {
             const example = examples[id]
