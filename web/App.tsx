@@ -1,388 +1,267 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 
-type Action = {
-  need: string
-  choice: string
-  meaning: string
-  rejected: string
-}
-
-type Scenario = {
-  match: RegExp
+type Action = { need: string; choice: string; meaning: string }
+type Example = {
+  id: string
+  pathway: string
+  step: number
   request: string
   title: string
   summary: string
   actions: Action[]
   symbols: string
   code: string[]
+  next?: { label: string; description: string; id: string }
 }
+type Pathway = { id: string; number: string; title: string; description: string; start: string }
 
-type AppMemory = {
-  currentRequest: string
-  recentRequests: string[]
-}
-
-const MEMORY_KEY = 'mopappa-memory-v1'
-
-const emptyMemory: AppMemory = {
-  currentRequest: '',
-  recentRequests: [],
-}
-
-function loadMemory(): AppMemory {
-  try {
-    const stored = window.localStorage.getItem(MEMORY_KEY)
-    if (!stored) return emptyMemory
-
-    const parsed = JSON.parse(stored) as Partial<AppMemory>
-    const currentRequest = typeof parsed.currentRequest === 'string' ? parsed.currentRequest : ''
-    const recentRequests = Array.isArray(parsed.recentRequests)
-      ? parsed.recentRequests.filter((item): item is string => typeof item === 'string').slice(0, 5)
-      : []
-
-    return { currentRequest, recentRequests }
-  } catch {
-    return emptyMemory
-  }
-}
-
-const scenarios: Scenario[] = [
-  {
-    match: /double|twice|multiply/i,
-    request: 'Double an integer',
-    title: 'A typed function with one multiplication',
-    summary: 'The structure needs one integer parameter, an integer return type, and a multiplication expression that reuses the input symbol.',
-    actions: [
-      { need: 'Item', choice: 'Function', meaning: 'Create one callable unit', rejected: 'If · Call · I32' },
-      { need: 'Param.binding', choice: 'NewSymbol @1', meaning: 'Accept one input value', rejected: 'SymbolRef · Literal' },
-      { need: 'Param.type', choice: 'I32', meaning: 'The input is an integer', rejected: 'Function · BinaryOp' },
-      { need: 'Return.type', choice: 'I32', meaning: 'The result is an integer', rejected: 'Call · Mul · If' },
-      { need: 'Expression', choice: 'BinaryOp', meaning: 'Compute from two operands', rejected: 'Function · I32' },
-      { need: 'Binary.operator', choice: 'Mul', meaning: 'Scale the input value', rejected: 'If · Param · Call' },
-      { need: 'Binary.left', choice: 'SymbolRef @1', meaning: 'Reuse the function input', rejected: 'Function · Type' },
-      { need: 'Binary.right', choice: 'IntLiteral 2', meaning: 'Multiply it by two', rejected: 'Param · Item · Type' },
-    ],
-    symbols: '@0 → double    @1 → value',
-    code: ['fn double(value: i32) -> i32 {', '    value * 2', '}'],
-  },
-  {
-    match: /even|list|array|vector|find/i,
-    request: 'Find the first even number in a list',
-    title: 'A safe search with an optional result',
-    summary: 'The structure borrows the list, checks each value once, and returns an Option so an empty result is represented explicitly.',
-    actions: [
-      { need: 'Item', choice: 'Function', meaning: 'Create a reusable search', rejected: 'If · Loop · I32' },
-      { need: 'Param.type', choice: 'Ref<Slice<I32>>', meaning: 'Read a borrowed list', rejected: 'Function · Call' },
-      { need: 'Return.type', choice: 'Option<I32>', meaning: 'The search may find nothing', rejected: 'BinaryOp · Loop' },
-      { need: 'Block.entry', choice: 'ForLoop', meaning: 'Inspect each number once', rejected: 'Type · Param' },
-      { need: 'Loop.condition', choice: 'Eq(Mod(@2, 2), 0)', meaning: 'Recognise an even value', rejected: 'Function · Struct' },
-      { need: 'Then.expression', choice: 'Return(Some(@2))', meaning: 'Finish at the first match', rejected: 'Type · Param' },
-      { need: 'Block.tail', choice: 'None', meaning: 'Represent no match found', rejected: 'Item · Operator' },
-    ],
-    symbols: '@0 → first_even    @1 → numbers    @2 → number',
-    code: [
-      'fn first_even(numbers: &[i32]) -> Option<i32> {',
-      '    for &number in numbers {',
-      '        if number % 2 == 0 {',
-      '            return Some(number);',
-      '        }',
-      '    }',
-      '    None',
-      '}',
-    ],
-  },
-  {
-    match: /clamp|minimum|maximum|between|range/i,
-    request: 'Clamp a value between min and max',
-    title: 'A bounded value with explicit branches',
-    summary: 'The structure compares the value with each boundary in turn, returning the appropriate bound or the original value.',
-    actions: [
-      { need: 'Item', choice: 'Function', meaning: 'Create a reusable constraint', rejected: 'If · Call · I32' },
-      { need: 'Params', choice: 'I32 × 3', meaning: 'Receive value and two bounds', rejected: 'Expression · Item' },
-      { need: 'Return.type', choice: 'I32', meaning: 'Return a bounded integer', rejected: 'If · Function' },
-      { need: 'Expression', choice: 'If', meaning: 'Branch on boundary checks', rejected: 'Type · Param' },
-      { need: 'If.condition', choice: 'Lt(@1, @2)', meaning: 'Detect values below minimum', rejected: 'Item · Type' },
-      { need: 'Else.expression', choice: 'If', meaning: 'Check the upper bound next', rejected: 'Param · Function' },
-      { need: 'If.condition', choice: 'Gt(@1, @3)', meaning: 'Detect values above maximum', rejected: 'Item · Type' },
-      { need: 'Else.tail', choice: 'SymbolRef @1', meaning: 'Keep values already in range', rejected: 'Function · Param' },
-    ],
-    symbols: '@0 → clamp    @1 → value    @2 → min    @3 → max',
-    code: [
-      'fn clamp(value: i32, min: i32, max: i32) -> i32 {',
-      '    if value < min {',
-      '        min',
-      '    } else if value > max {',
-      '        max',
-      '    } else {',
-      '        value',
-      '    }',
-      '}',
-    ],
-  },
+const pathways: Pathway[] = [
+  { id: 'calculator', number: '01', title: 'Grow a calculator', description: 'Start with addition, introduce multiplication, then make both operations safe.', start: 'add' },
+  { id: 'collections', number: '02', title: 'Search a collection', description: 'Find one even number, collect every match, then remove duplicates.', start: 'find-even' },
+  { id: 'boundaries', number: '03', title: 'Handle boundaries', description: 'Clamp a value, validate its bounds, then group those bounds into a range.', start: 'clamp' },
 ]
 
-function PlusIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+const examples: Record<string, Example> = {
+  add: {
+    id: 'add', pathway: 'calculator', step: 1,
+    request: 'Create a function that adds two integers',
+    title: 'Begin with one typed operation',
+    summary: 'Two integer parameters feed a single addition expression. The renderer owns the function syntax and punctuation.',
+    actions: [
+      { need: 'Item', choice: 'Function', meaning: 'Create one callable unit' },
+      { need: 'Parameters', choice: 'I32 × 2', meaning: 'Accept two integer values' },
+      { need: 'Return.type', choice: 'I32', meaning: 'Return one integer' },
+      { need: 'Expression', choice: 'Add(@1, @2)', meaning: 'Add the two input symbols' },
+    ],
+    symbols: '@0 → calculate    @1 → left    @2 → right',
+    code: ['fn calculate(left: i32, right: i32) -> i32 {', '    left + right', '}'],
+    next: { label: 'Please now add multiplication', description: 'Keep the sum and return the product alongside it.', id: 'multiply' },
+  },
+  multiply: {
+    id: 'multiply', pathway: 'calculator', step: 2,
+    request: 'Please now add multiplication',
+    title: 'Extend the structure with a second result',
+    summary: 'The return type becomes a pair. Both expressions reuse the same scoped parameters.',
+    actions: [
+      { need: 'Return.type', choice: 'Tuple<I32, I32>', meaning: 'Return two integer results' },
+      { need: 'Tuple.first', choice: 'Add(@1, @2)', meaning: 'Keep the original sum' },
+      { need: 'Tuple.second', choice: 'Mul(@1, @2)', meaning: 'Add the requested product' },
+    ],
+    symbols: '@0 → calculate    @1 → left    @2 → right',
+    code: ['fn calculate(left: i32, right: i32) -> (i32, i32) {', '    (left + right, left * right)', '}'],
+    next: { label: 'Prevent integer overflow', description: 'Use checked operations and return nothing if either fails.', id: 'checked' },
+  },
+  checked: {
+    id: 'checked', pathway: 'calculator', step: 3,
+    request: 'Prevent integer overflow',
+    title: 'Finish with checked arithmetic',
+    summary: 'Both operations must succeed before the function constructs its result.',
+    actions: [
+      { need: 'Return.type', choice: 'Option<Tuple<I32, I32>>', meaning: 'Represent arithmetic failure' },
+      { need: 'Bindings', choice: 'checked_add, checked_mul', meaning: 'Use safe integer operations' },
+      { need: 'Expression', choice: 'Some(tuple)', meaning: 'Return values only when both exist' },
+    ],
+    symbols: '@0 → calculate    @1 → left    @2 → right',
+    code: ['fn calculate(left: i32, right: i32) -> Option<(i32, i32)> {', '    let sum = left.checked_add(right)?;', '    let product = left.checked_mul(right)?;', '    Some((sum, product))', '}'],
+  },
+  'find-even': {
+    id: 'find-even', pathway: 'collections', step: 1,
+    request: 'Find the first even number in a list',
+    title: 'Begin with a safe search',
+    summary: 'The function borrows a slice and returns an optional value so a missing match is explicit.',
+    actions: [
+      { need: 'Param.type', choice: 'Ref<Slice<I32>>', meaning: 'Borrow a list of integers' },
+      { need: 'Return.type', choice: 'Option<I32>', meaning: 'Allow for no match' },
+      { need: 'Iterator', choice: 'Find', meaning: 'Stop at the first match' },
+      { need: 'Predicate', choice: 'Eq(Mod(@2, 2), 0)', meaning: 'Recognise even values' },
+    ],
+    symbols: '@0 → first_even    @1 → numbers    @2 → number',
+    code: ['fn first_even(numbers: &[i32]) -> Option<i32> {', '    numbers.iter().copied().find(|number| number % 2 == 0)', '}'],
+    next: { label: 'Return every even number', description: 'Inspect the full input and collect all matches.', id: 'all-even' },
+  },
+  'all-even': {
+    id: 'all-even', pathway: 'collections', step: 2,
+    request: 'Return every even number',
+    title: 'Expand the search into a filter',
+    summary: 'The same predicate now keeps every match and collects the copied values.',
+    actions: [
+      { need: 'Return.type', choice: 'Vec<I32>', meaning: 'Return zero or more values' },
+      { need: 'Iterator', choice: 'Filter', meaning: 'Inspect the complete input' },
+      { need: 'Terminal', choice: 'Collect', meaning: 'Build the result vector' },
+    ],
+    symbols: '@0 → all_even    @1 → numbers    @2 → number',
+    code: ['fn all_even(numbers: &[i32]) -> Vec<i32> {', '    numbers.iter().copied()', '        .filter(|number| number % 2 == 0)', '        .collect()', '}'],
+    next: { label: 'Remove duplicate values', description: 'Preserve the first occurrence of each even number.', id: 'unique-even' },
+  },
+  'unique-even': {
+    id: 'unique-even', pathway: 'collections', step: 3,
+    request: 'Remove duplicate values',
+    title: 'Finish with stable de-duplication',
+    summary: 'A set tracks values already seen while the vector preserves input order.',
+    actions: [
+      { need: 'Local', choice: 'HashSet<I32>', meaning: 'Track values already emitted' },
+      { need: 'Predicate', choice: 'Even && Inserted', meaning: 'Keep new even values only' },
+      { need: 'Terminal', choice: 'Collect<Vec<I32>>', meaning: 'Preserve encounter order' },
+    ],
+    symbols: '@0 → unique_even    @1 → numbers    @2 → seen',
+    code: ['fn unique_even(numbers: &[i32]) -> Vec<i32> {', '    let mut seen = std::collections::HashSet::new();', '    numbers.iter().copied()', '        .filter(|n| n % 2 == 0 && seen.insert(*n))', '        .collect()', '}'],
+  },
+  clamp: {
+    id: 'clamp', pathway: 'boundaries', step: 1,
+    request: 'Clamp a value between min and max',
+    title: 'Begin with explicit boundaries',
+    summary: 'The structure compares the value with each bound and returns the appropriate integer.',
+    actions: [
+      { need: 'Parameters', choice: 'I32 × 3', meaning: 'Receive a value and two bounds' },
+      { need: 'Expression', choice: 'Clamp', meaning: 'Apply both boundaries' },
+      { need: 'Lower.bound', choice: 'Max(@1, @2)', meaning: 'Raise values below minimum' },
+      { need: 'Upper.bound', choice: 'Min(result, @3)', meaning: 'Lower values above maximum' },
+    ],
+    symbols: '@0 → clamp    @1 → value    @2 → min    @3 → max',
+    code: ['fn clamp(value: i32, min: i32, max: i32) -> i32 {', '    value.max(min).min(max)', '}'],
+    next: { label: 'Reject reversed bounds', description: 'Return an error when min exceeds max.', id: 'validate-clamp' },
+  },
+  'validate-clamp': {
+    id: 'validate-clamp', pathway: 'boundaries', step: 2,
+    request: 'Reject reversed bounds',
+    title: 'Make invalid input explicit',
+    summary: 'A result type separates a valid bounded value from an invalid range.',
+    actions: [
+      { need: 'Return.type', choice: 'Result<I32, Error>', meaning: 'Represent validation failure' },
+      { need: 'Guard', choice: 'Gt(@2, @3)', meaning: 'Detect reversed bounds' },
+      { need: 'Success', choice: 'Ok(Clamp)', meaning: 'Return a validated value' },
+    ],
+    symbols: '@0 → clamp    @1 → value    @2 → min    @3 → max',
+    code: ['fn clamp(value: i32, min: i32, max: i32) -> Result<i32, &\'static str> {', '    if min > max { return Err("min must not exceed max"); }', '    Ok(value.max(min).min(max))', '}'],
+    next: { label: 'Use an inclusive range', description: 'Keep the related bounds together in one value.', id: 'range-clamp' },
+  },
+  'range-clamp': {
+    id: 'range-clamp', pathway: 'boundaries', step: 3,
+    request: 'Use an inclusive range',
+    title: 'Finish with one boundary value',
+    summary: 'An inclusive range groups the two bounds in the function signature.',
+    actions: [
+      { need: 'Param.type', choice: 'RangeInclusive<I32>', meaning: 'Group minimum and maximum' },
+      { need: 'Bindings', choice: 'Range.into_inner', meaning: 'Read both bounds once' },
+      { need: 'Success', choice: 'Ok(Clamp)', meaning: 'Return the bounded value' },
+    ],
+    symbols: '@0 → clamp    @1 → value    @2 → range',
+    code: ['fn clamp(value: i32, range: std::ops::RangeInclusive<i32>) -> Result<i32, &\'static str> {', '    let (min, max) = range.into_inner();', '    if min > max { return Err("range must not be empty"); }', '    Ok(value.max(min).min(max))', '}'],
+  },
 }
 
-function SendIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 6-6 6 6M10 4v12" /></svg>
-}
-
-function CheckIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9" /></svg>
-}
-
-function CopyIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1" /><path d="M5 13H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" /></svg>
-}
-
-function MenuIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h12" /></svg>
-}
-
-function ResetIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3M6 6l1 11h6l1-11M9 9v5M11 9v5" /></svg>
-}
+function CheckIcon() { return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9" /></svg> }
+function CopyIcon() { return <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1" /><path d="M5 13H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" /></svg> }
+function MenuIcon() { return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h12" /></svg> }
+function ArrowIcon() { return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4" /></svg> }
+function PlusIcon() { return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg> }
 
 export default function App() {
-  const [initialMemory] = useState(loadMemory)
-  const restoredScenario = initialMemory.currentRequest
-    ? scenarios.find((item) => item.match.test(initialMemory.currentRequest)) ?? scenarios[0]
-    : null
-  const [input, setInput] = useState('')
-  const [request, setRequest] = useState(initialMemory.currentRequest)
-  const [scenario, setScenario] = useState<Scenario | null>(restoredScenario)
-  const [visibleSteps, setVisibleSteps] = useState(restoredScenario?.actions.length ?? 0)
-  const [isRunning, setIsRunning] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [history, setHistory] = useState<string[]>([])
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [recentRequests, setRecentRequests] = useState<string[]>(initialMemory.recentRequests)
+  const current = currentId ? examples[currentId] : null
+  const activePath = current ? pathways.find((path) => path.id === current.pathway) : null
 
-  useEffect(() => {
-    if (!request && recentRequests.length === 0) {
-      window.localStorage.removeItem(MEMORY_KEY)
-      return
-    }
-
-    window.localStorage.setItem(MEMORY_KEY, JSON.stringify({
-      currentRequest: request,
-      recentRequests,
-    } satisfies AppMemory))
-  }, [recentRequests, request])
-
-  useEffect(() => {
-    if (!isRunning || !scenario) return
-    if (visibleSteps >= scenario.actions.length) {
-      const finish = window.setTimeout(() => setIsRunning(false), 260)
-      return () => window.clearTimeout(finish)
-    }
-    const next = window.setTimeout(() => setVisibleSteps((count) => count + 1), 180)
-    return () => window.clearTimeout(next)
-  }, [isRunning, scenario, visibleSteps])
-
-  const progress = useMemo(
-    () => scenario ? Math.round((visibleSteps / scenario.actions.length) * 100) : 0,
-    [scenario, visibleSteps],
-  )
-
-  const run = (raw: string) => {
-    const request = raw.trim()
-    if (!request) return
-    const nextScenario = scenarios.find((item) => item.match.test(request)) ?? scenarios[0]
-    setRequest(request)
-    setScenario(nextScenario)
-    setVisibleSteps(0)
-    setCopied(false)
-    setIsRunning(true)
-    setInput('')
-    setSidebarOpen(false)
-    setRecentRequests((current) => [request, ...current.filter((item) => item !== request)].slice(0, 5))
-    window.requestAnimationFrame(() => {
-      document.querySelector('.conversation')?.scrollTo({ top: 9999, behavior: 'smooth' })
-    })
+  const start = (path: Pathway) => {
+    setCurrentId(path.start); setHistory([path.start]); setCopiedId(null); setSidebarOpen(false)
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.querySelector('.exchange:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }
+  const continueTo = (id: string) => {
+    setCurrentId(id); setHistory((items) => [...items, id]); setCopiedId(null)
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => document.querySelector('.exchange:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }
+  const reset = () => { setCurrentId(null); setHistory([]); setSidebarOpen(false) }
+  const copyCode = async (example: Example) => {
+    await navigator.clipboard.writeText(example.code.join('\n'))
+    setCopiedId(example.id); window.setTimeout(() => setCopiedId(null), 1800)
   }
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    run(input)
-  }
+  return <div className="app-shell">
+    <button className="mobile-menu" type="button" aria-label="Open pathway navigation" onClick={() => setSidebarOpen(true)}><MenuIcon /></button>
+    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <div className="sidebar-top">
+        <button className="brand brand-button" type="button" aria-label="MoPaPPa home" onClick={reset}><span className="brand-mark">M</span><span>MoPaPPa</span></button>
+        <button className="sidebar-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
+      </div>
+      <button className="new-chat" type="button" onClick={reset}><PlusIcon /> New conversation</button>
+      <div className="pathway-nav-heading"><span>Example pathways</span><small>Choose one</small></div>
+      <nav className="pathway-nav" aria-label="Example pathways">
+        {pathways.map((path) => <button type="button" key={path.id} onClick={() => start(path)} className={activePath?.id === path.id ? 'active' : ''}>
+          <span>{path.number}</span><div><strong>{path.title}</strong><small>3 steps</small></div>
+        </button>)}
+      </nav>
+      <div className="sidebar-note"><span>Deterministic by design</span><p>Every button follows an authored route. There is no free-text prompt or open-ended chat response.</p><a href="#method">Read the method <span aria-hidden="true">↗</span></a></div>
+      <div className="profile"><span className="profile-mark">B</span><div><strong>Research workspace</strong><small>Constrained Rust IR</small></div><span aria-hidden="true">•••</span></div>
+    </aside>
+    {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
 
-  const copyCode = async () => {
-    if (!scenario) return
-    await navigator.clipboard.writeText(scenario.code.join('\n'))
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
-  }
+    <main className="main-area">
+      <header className="topbar"><div><strong>Structural interpreter</strong><span>Guided conversation</span></div><span className="route-count">3 fixed pathways</span></header>
+      <div className="conversation" id="top">
+        <div className="conversation-inner">
+        {!current && <>
+          <section className="explainer" id="method" aria-labelledby="explainer-title">
+            <span className="eyebrow">Guided structural examples</span>
+            <h1 id="explainer-title">The model chooses meaning.<br />The system handles syntax.</h1>
+            <p className="explainer-copy">Choose an example below to begin. Each response offers a fixed next message, so the conversation stays predictable and reviewable.</p>
+            <div className="method-line" aria-label="Example method">
+              <div><span>01</span><strong>Prompt</strong><p>Choose one of three authored messages.</p></div>
+              <div><span>02</span><strong>Inspect</strong><p>See the typed decisions behind the output.</p></div>
+              <div><span>03</span><strong>Reply</strong><p>Continue with a suggested follow-up message.</p></div>
+            </div>
+          </section>
+        </>}
 
-  const startNewConversation = () => {
-    setRequest('')
-    setScenario(null)
-    setVisibleSteps(0)
-    setIsRunning(false)
-    setCopied(false)
-    setInput('')
-    setSidebarOpen(false)
-  }
-
-  const resetMemory = () => {
-    window.localStorage.removeItem(MEMORY_KEY)
-    setRecentRequests([])
-    startNewConversation()
-  }
-
-  return (
-    <div className="app-shell">
-      <button className="mobile-menu" type="button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}><MenuIcon /></button>
-
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-top">
-          <a className="brand" href="#top" aria-label="MoPaPPa home"><span className="brand-mark">M</span><span>MoPaPPa</span></a>
-          <button className="sidebar-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
-        </div>
-
-        <button className="new-chat" type="button" onClick={startNewConversation}><PlusIcon /> New conversation</button>
-
-        <nav className="conversation-nav" aria-label="Recent conversations">
-          <div className="conversation-nav-heading"><span>Recent</span><small>Saved locally</small></div>
-          {recentRequests.length === 0 && <p className="no-recents">No conversations yet</p>}
-          {recentRequests.map((item) => (
-            <button
-              type="button"
-              key={item}
-              onClick={() => run(item)}
-              className={request === item ? 'active' : ''}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
-
-        <button className="reset-memory" type="button" onClick={resetMemory} disabled={recentRequests.length === 0 && !request}>
-          <ResetIcon /> Reset memory
-        </button>
-
-        <div className="sidebar-note">
-          <span>What is different?</span>
-          <p>The model predicts program structure. A deterministic renderer supplies valid Rust syntax.</p>
-          <a href="#method">Read the method <span aria-hidden="true">↗</span></a>
-        </div>
-
-        <div className="profile">
-          <span className="profile-mark">B</span>
-          <div><strong>Research workspace</strong><small>Constrained Rust IR</small></div>
-          <span aria-hidden="true">•••</span>
-        </div>
-      </aside>
-
-      {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
-
-      <main className="main-area">
-        <header className="topbar">
-          <div><strong>Structural interpreter</strong><span>MoPaPPa research preview</span></div>
-          <button type="button" className="mode-button">Rust <span aria-hidden="true">⌄</span></button>
-        </header>
-
-        <div className="conversation" id="top">
-          <div className="conversation-inner">
-            <section className="explainer" id="method" aria-labelledby="explainer-title">
-              <span className="eyebrow">Structure-aware code generation</span>
-              <h1 id="explainer-title">The model chooses meaning.<br />The system handles syntax.</h1>
-              <p className="explainer-copy">Describe a small program in plain language. MoPaPPa builds a typed structure, rules out invalid moves, and renders legal Rust only after the structure is complete.</p>
-
-              <div className="method-line" aria-label="Generation method">
-                <div><span>01</span><strong>Interpret</strong><p>Convert your intent into program concepts.</p></div>
-                <div><span>02</span><strong>Constrain</strong><p>Offer only valid choices at each position.</p></div>
-                <div><span>03</span><strong>Render</strong><p>Add grammar and formatting deterministically.</p></div>
-              </div>
-
-              <div className="suggestions" aria-label="Example prompts">
-                <span>Try an example</span>
-                {scenarios.map((item) => (
-                  <button type="button" key={item.request} onClick={() => run(item.request)} disabled={isRunning}>{item.request}</button>
-                ))}
-              </div>
-            </section>
-
-            {scenario && <section className="thread" aria-label="Conversation">
+        {history.length > 0 && <section className="thread" aria-label="Conversation">
+          {history.map((id, messageIndex) => {
+            const example = examples[id]
+            return <div className="exchange" key={id}>
               <article className="message user-message">
                 <div className="message-label">You</div>
-                <div className="user-bubble">{request}</div>
+                <div className="user-bubble">{example.request}</div>
               </article>
-
               <article className="message assistant-message">
                 <div className="assistant-avatar" aria-hidden="true">M</div>
                 <div className="assistant-content">
-                  <div className="message-label">MoPaPPa</div>
-                  <h2>{scenario.title}</h2>
-                  <p className="response-summary">{scenario.summary}</p>
-
-                  <div className="generation-status" aria-live="polite">
-                    <div><span>{isRunning ? 'Building structure' : 'Structure complete'}</span><strong>{progress}%</strong></div>
-                    <div className="progress-track"><i style={{ width: `${progress}%` }} /></div>
-                    <p>{isRunning ? `Selecting ${scenario.actions[Math.min(visibleSteps, scenario.actions.length - 1)].need}` : 'Every selected node satisfies the current schema and scope.'}</p>
-                  </div>
-
+                  <div className="message-label">MoPaPPa · Step {messageIndex + 1} of 3</div>
+                  <h2>{example.title}</h2>
+                  <p className="response-summary">{example.summary}</p>
                   <div className="answer-grid">
-                    <section className="trace" aria-labelledby="trace-title">
-                      <div className="section-heading"><span id="trace-title">Structural decisions</span><small>{scenario.actions.length} decisions</small></div>
-                      <div className="trace-list">
-                        {scenario.actions.map((action, index) => {
-                          const revealed = index < visibleSteps
-                          const active = isRunning && index === visibleSteps
-                          return (
-                            <div className={`trace-row ${revealed ? 'revealed' : ''} ${active ? 'active' : ''}`} key={`${scenario.request}-${action.need}`}>
-                              <span className="trace-check">{revealed ? <CheckIcon /> : index + 1}</span>
-                              <div><code>{action.need}</code><p>{revealed ? action.meaning : active ? 'Evaluating valid choices…' : 'Waiting for prior decision'}</p></div>
-                              <strong>{revealed ? action.choice : active ? 'scoring…' : '—'}</strong>
-                            </div>
-                          )
-                        })}
-                      </div>
+                    <section className="trace" aria-labelledby={`trace-${id}`}>
+                      <div className="section-heading"><span id={`trace-${id}`}>Structural decisions</span><small>{example.actions.length} decisions</small></div>
+                      <div className="trace-list">{example.actions.map((action) => <div className="trace-row revealed" key={`${id}-${action.need}`}>
+                        <span className="trace-check"><CheckIcon /></span><div><code>{action.need}</code><p>{action.meaning}</p></div><strong>{action.choice}</strong>
+                      </div>)}</div>
                     </section>
-
-                    <section className="code-panel" aria-labelledby="code-title">
-                      <div className="code-heading">
-                        <div><span>rust</span><small id="code-title">Rendered output</small></div>
-                        <button type="button" onClick={copyCode} disabled={isRunning}><CopyIcon /> {copied ? 'Copied' : 'Copy'}</button>
-                      </div>
-                      <pre className={isRunning ? 'muted-code' : ''}>{scenario.code.map((line, index) => (
-                        <span className="code-line" key={`${line}-${index}`}><i>{index + 1}</i><code>{line}</code></span>
-                      ))}</pre>
-                      <div className="code-meta"><span>Symbols</span><code>{scenario.symbols}</code></div>
+                    <section className="code-panel" aria-labelledby={`code-${id}`}>
+                      <div className="code-heading"><div><span>rust</span><small id={`code-${id}`}>Rendered output</small></div><button type="button" onClick={() => copyCode(example)}><CopyIcon /> {copiedId === id ? 'Copied' : 'Copy'}</button></div>
+                      <pre>{example.code.map((line, index) => <span className="code-line" key={`${line}-${index}`}><i>{index + 1}</i><code>{line}</code></span>)}</pre>
+                      <div className="code-meta"><span>Symbols</span><code>{example.symbols}</code></div>
                     </section>
                   </div>
-
-                  <div className="validity-note"><CheckIcon /><p><strong>Valid by construction.</strong> Punctuation, braces, and indentation are supplied by the renderer rather than predicted by the model.</p></div>
+                  <div className="validity-note"><CheckIcon /><p><strong>Valid by construction.</strong> Punctuation, braces, and indentation are supplied by the renderer.</p></div>
                 </div>
               </article>
-            </section>}
+            </div>
+          })}
+        </section>}
+        </div>
+      </div>
+
+      <div className="choice-tray-wrap" aria-label="Suggested messages">
+        <div className="choice-tray">
+          <div className="choice-tray-heading"><span>{current ? current.next ? 'Choose your next message' : 'Path complete' : 'Start with an example'}</span><small>{current ? activePath?.title : '3 pathways available'}</small></div>
+          <div className="choice-options">
+            {!current && pathways.map((path) => <button type="button" key={path.id} onClick={() => start(path)}><span>{examples[path.start].request}</span><ArrowIcon /></button>)}
+            {current?.next && <button type="button" onClick={() => continueTo(current.next!.id)}><span>{current.next.label}</span><ArrowIcon /></button>}
+            {current && !current.next && pathways.filter((path) => path.id !== current.pathway).map((path) => <button type="button" key={path.id} onClick={() => start(path)}><span>Try: {examples[path.start].request}</span><ArrowIcon /></button>)}
+            {current && !current.next && <button type="button" className="secondary-choice" onClick={reset}><span>Start a new conversation</span><PlusIcon /></button>}
           </div>
         </div>
-
-        <div className="composer-wrap">
-          <form className="composer" onSubmit={submit}>
-            <textarea
-              aria-label="Message MoPaPPa"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  if (input.trim() && !isRunning) run(input)
-                }
-              }}
-              placeholder="Describe the Rust program you want to build"
-              rows={1}
-            />
-            <div className="composer-actions">
-              <span><b>+</b> Plain language is enough</span>
-              <button type="submit" disabled={!input.trim() || isRunning} aria-label="Send message"><SendIcon /></button>
-            </div>
-          </form>
-          <p className="composer-note">MoPaPPa is a structural generation demo. Review generated code before use.</p>
-        </div>
-      </main>
-    </div>
-  )
+        <p>Choose a predefined message to continue this deterministic demo.</p>
+      </div>
+    </main>
+  </div>
 }
