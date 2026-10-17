@@ -146,7 +146,6 @@ layout: full
       <div class="trace-row"><i>✓</i><span><code>Result</code><small>Return one integer</small></span><b>I32</b></div>
       <div class="trace-row"><i>✓</i><span><code>Operation</code><small>Add the two input values</small></span><b>Add(@1, @2)</b></div>
     </section>
-
     <section class="code-window final-code">
       <div class="code-title"><span>RUST</span><small>Rendered output</small></div>
       <div class="code-body numbered-code">
@@ -196,7 +195,6 @@ layout: full
       <div v-click class="meaning-line safe-line"><span>optional result</span><b>+</b><span>checked operations</span></div>
       <blockquote>Each request edits the representation before it becomes text.</blockquote>
     </section>
-
     <section class="code-window checked-code">
       <div class="code-title"><span>RUST</span><small>Final rendered output</small></div>
       <div class="code-body">
@@ -239,7 +237,6 @@ layout: full
       <div class="score-row"><code>ReturnInteger</code><span class="score-bar"><i style="width:63%"></i></span><b>0.63</b></div>
       <div class="score-row"><code>OpenBlock</code><span class="score-bar"><i style="width:28%"></i></span><b>0.28</b></div>
     </section>
-
     <section class="mask-column">
       <p class="table-label">Legality mask</p>
       <div class="mask-row illegal"><span>Masked</span><small>wrong result shape</small></div>
@@ -247,7 +244,6 @@ layout: full
       <div class="mask-row legal"><span>Legal</span><small>fits current state</small></div>
       <div class="mask-row illegal"><span>Masked</span><small>block unavailable</small></div>
     </section>
-
     <section v-click class="chosen-action">
       <p>Choose best legal</p>
       <strong>ReturnTuple</strong>
