@@ -12,6 +12,7 @@ from manim import (
     DOWN,
     FadeIn,
     FadeOut,
+    Group,
     GrowFromCenter,
     LEFT,
     LaggedStart,
@@ -204,7 +205,7 @@ class ShashaExplainer(MovingCameraScene):
 
     def clear_stage(self, run_time: float = 0.6):
         if self.mobjects:
-            self.play(FadeOut(VGroup(*self.mobjects), shift=UP * 0.08), run_time=run_time)
+            self.play(FadeOut(Group(*self.mobjects), shift=UP * 0.08), run_time=run_time)
 
     def old_assumption(self):
         lockup = brand(0.88).to_corner(UP + LEFT, buff=0.45)
@@ -645,4 +646,3 @@ class ShashaExplainer(MovingCameraScene):
         self.play(FadeIn(line_three, shift=UP * 0.08), FadeIn(line_four, shift=UP * 0.08), run_time=1.0)
         self.play(Create(rule), FadeIn(honest_scope), run_time=0.7)
         self.wait(3.0)
-
