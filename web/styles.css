@@ -74,6 +74,8 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColo
 
 .conversation { min-height: 0; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; scrollbar-color: #c9c2ba transparent; }
 .conversation-inner { width: min(100% - 48px, 1200px); margin: 0 auto; padding: 54px 0 74px; }
+.conversation-inner.is-empty { min-height: 100%; display: grid; place-items: center; padding: 24px; }
+.welcome-state h1 { margin: 0; color: var(--ink); font-family: 'Playfair Display', Georgia, serif; font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -.035em; }
 
 .suggestions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 22px; }
 .suggestions > span { margin-right: 4px; color: var(--muted); font-size: 11px; font-weight: 600; }

@@ -208,8 +208,9 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div><strong>Guided code examples</strong><span>Guided conversation</span></div><span className="route-count">3 fixed pathways</span></header>
       <div className="conversation" id="top">
-        <div className="conversation-inner">
-        {history.length > 0 && <section className="thread" aria-label="Conversation" aria-live="polite">
+        <div className={`conversation-inner ${history.length === 0 ? 'is-empty' : ''}`}>
+          {history.length === 0 && <div className="welcome-state" role="status"><h1>Welcome to Shasha</h1></div>}
+          {history.length > 0 && <section className="thread" aria-label="Conversation" aria-live="polite">
           {history.map((id, messageIndex) => {
             const example = examples[id]
             const isCurrent = messageIndex === history.length - 1
@@ -243,7 +244,7 @@ export default function App() {
               </article>
             </div>
           })}
-        </section>}
+          </section>}
         </div>
       </div>
 
