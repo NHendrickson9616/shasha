@@ -668,7 +668,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mopappa-hackathon"
+name = "shasha-hackathon"
 version = "0.1.0"
 dependencies = [
  "candle-core",

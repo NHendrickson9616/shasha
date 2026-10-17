@@ -1,6 +1,6 @@
 use candle_core::{DType, Device};
 use candle_nn::{VarBuilder, VarMap};
-use mopappa_hackathon::{generate, model::TinyTransformer};
+use shasha_hackathon::{generate, model::TinyTransformer};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vars = VarMap::new();

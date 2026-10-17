@@ -1,4 +1,4 @@
-//! Small, independent starter inspired by MoPaPPa's structured generation path.
+//! Small, independent starter for Shasha's structured generation path.
 
 pub mod controller;
 pub mod model;
@@ -7,7 +7,7 @@ use candle_core::{Result, Tensor};
 use controller::Controller;
 use model::TinyTransformer;
 
-/// Decode two structural decisions. The randomly initialized model is a wiring
+/// Decode two choices. The randomly initialized model is a wiring
 /// demo, not a trained English-to-Rust generator. Prompt IDs are placeholders.
 pub fn generate(model: &TinyTransformer, prompt_ids: &[u32]) -> Result<String> {
     let mut controller = Controller::new();

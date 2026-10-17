@@ -25,13 +25,13 @@ const examples: Record<string, Example> = {
   add: {
     id: 'add', pathway: 'calculator', step: 1,
     request: 'Create a function that adds two integers',
-    title: 'Begin with one typed operation',
-    summary: 'Two integer parameters feed a single addition expression. The renderer owns the function syntax and punctuation.',
+    title: 'Begin with one integer operation',
+    summary: 'Two integer inputs feed a single addition operation. The app supplies the function syntax and punctuation.',
     actions: [
-      { need: 'Item', choice: 'Function', meaning: 'Create one callable unit' },
-      { need: 'Parameters', choice: 'I32 × 2', meaning: 'Accept two integer values' },
-      { need: 'Return.type', choice: 'I32', meaning: 'Return one integer' },
-      { need: 'Expression', choice: 'Add(@1, @2)', meaning: 'Add the two input symbols' },
+      { need: 'Function kind', choice: 'Function', meaning: 'Create one callable unit' },
+      { need: 'Inputs', choice: 'I32 × 2', meaning: 'Accept two integer values' },
+      { need: 'Result', choice: 'I32', meaning: 'Return one integer' },
+      { need: 'Operation', choice: 'Add(@1, @2)', meaning: 'Add the two input values' },
     ],
     symbols: '@0 → calculate    @1 → left    @2 → right',
     code: ['fn calculate(left: i32, right: i32) -> i32 {', '    left + right', '}'],
@@ -41,11 +41,11 @@ const examples: Record<string, Example> = {
     id: 'multiply', pathway: 'calculator', step: 2,
     request: 'Please now add multiplication',
     title: 'Extend the structure with a second result',
-    summary: 'The return type becomes a pair. Both expressions reuse the same scoped parameters.',
+    summary: 'The function returns a pair. Both expressions reuse the same inputs.',
     actions: [
-      { need: 'Return.type', choice: 'Tuple<I32, I32>', meaning: 'Return two integer results' },
-      { need: 'Tuple.first', choice: 'Add(@1, @2)', meaning: 'Keep the original sum' },
-      { need: 'Tuple.second', choice: 'Mul(@1, @2)', meaning: 'Add the requested product' },
+      { need: 'Result', choice: 'Tuple<I32, I32>', meaning: 'Return two integer results' },
+      { need: 'First result', choice: 'Add(@1, @2)', meaning: 'Keep the original sum' },
+      { need: 'Second result', choice: 'Mul(@1, @2)', meaning: 'Add the requested product' },
     ],
     symbols: '@0 → calculate    @1 → left    @2 → right',
     code: ['fn calculate(left: i32, right: i32) -> (i32, i32) {', '    (left + right, left * right)', '}'],
@@ -57,9 +57,9 @@ const examples: Record<string, Example> = {
     title: 'Finish with checked arithmetic',
     summary: 'Both operations must succeed before the function constructs its result.',
     actions: [
-      { need: 'Return.type', choice: 'Option<Tuple<I32, I32>>', meaning: 'Represent arithmetic failure' },
-      { need: 'Bindings', choice: 'checked_add, checked_mul', meaning: 'Use safe integer operations' },
-      { need: 'Expression', choice: 'Some(tuple)', meaning: 'Return values only when both exist' },
+      { need: 'Result', choice: 'Option<Tuple<I32, I32>>', meaning: 'Represent arithmetic failure' },
+      { need: 'Safe operations', choice: 'checked_add, checked_mul', meaning: 'Use safe integer operations' },
+      { need: 'Operation', choice: 'Some(tuple)', meaning: 'Return values only when both exist' },
     ],
     symbols: '@0 → calculate    @1 → left    @2 → right',
     code: ['fn calculate(left: i32, right: i32) -> Option<(i32, i32)> {', '    let sum = left.checked_add(right)?;', '    let product = left.checked_mul(right)?;', '    Some((sum, product))', '}'],
@@ -70,10 +70,10 @@ const examples: Record<string, Example> = {
     title: 'Begin with a safe search',
     summary: 'The function borrows a slice and returns an optional value so a missing match is explicit.',
     actions: [
-      { need: 'Param.type', choice: 'Ref<Slice<I32>>', meaning: 'Borrow a list of integers' },
-      { need: 'Return.type', choice: 'Option<I32>', meaning: 'Allow for no match' },
-      { need: 'Iterator', choice: 'Find', meaning: 'Stop at the first match' },
-      { need: 'Predicate', choice: 'Eq(Mod(@2, 2), 0)', meaning: 'Recognise even values' },
+      { need: 'Input', choice: 'Ref<Slice<I32>>', meaning: 'Borrow a list of integers' },
+      { need: 'Result', choice: 'Option<I32>', meaning: 'Allow for no match' },
+      { need: 'Search method', choice: 'Find', meaning: 'Stop at the first match' },
+      { need: 'Condition', choice: 'Eq(Mod(@2, 2), 0)', meaning: 'Recognise even values' },
     ],
     symbols: '@0 → first_even    @1 → numbers    @2 → number',
     code: ['fn first_even(numbers: &[i32]) -> Option<i32> {', '    numbers.iter().copied().find(|number| number % 2 == 0)', '}'],
@@ -83,11 +83,11 @@ const examples: Record<string, Example> = {
     id: 'all-even', pathway: 'collections', step: 2,
     request: 'Return every even number',
     title: 'Expand the search into a filter',
-    summary: 'The same predicate now keeps every match and collects the copied values.',
+    summary: 'The same condition now keeps every match and collects the copied values.',
     actions: [
-      { need: 'Return.type', choice: 'Vec<I32>', meaning: 'Return zero or more values' },
-      { need: 'Iterator', choice: 'Filter', meaning: 'Inspect the complete input' },
-      { need: 'Terminal', choice: 'Collect', meaning: 'Build the result vector' },
+      { need: 'Result', choice: 'Vec<I32>', meaning: 'Return zero or more values' },
+      { need: 'Search method', choice: 'Filter', meaning: 'Inspect the complete input' },
+      { need: 'Result step', choice: 'Collect', meaning: 'Build the result list' },
     ],
     symbols: '@0 → all_even    @1 → numbers    @2 → number',
     code: ['fn all_even(numbers: &[i32]) -> Vec<i32> {', '    numbers.iter().copied()', '        .filter(|number| number % 2 == 0)', '        .collect()', '}'],
@@ -99,9 +99,9 @@ const examples: Record<string, Example> = {
     title: 'Finish with stable de-duplication',
     summary: 'A set tracks values already seen while the vector preserves input order.',
     actions: [
-      { need: 'Local', choice: 'HashSet<I32>', meaning: 'Track values already emitted' },
-      { need: 'Predicate', choice: 'Even && Inserted', meaning: 'Keep new even values only' },
-      { need: 'Terminal', choice: 'Collect<Vec<I32>>', meaning: 'Preserve encounter order' },
+      { need: 'Tracking set', choice: 'HashSet<I32>', meaning: 'Track values already emitted' },
+      { need: 'Condition', choice: 'Even && Inserted', meaning: 'Keep new even values only' },
+      { need: 'Result step', choice: 'Collect<Vec<I32>>', meaning: 'Preserve encounter order' },
     ],
     symbols: '@0 → unique_even    @1 → numbers    @2 → seen',
     code: ['fn unique_even(numbers: &[i32]) -> Vec<i32> {', '    let mut seen = std::collections::HashSet::new();', '    numbers.iter().copied()', '        .filter(|n| n % 2 == 0 && seen.insert(*n))', '        .collect()', '}'],
@@ -112,10 +112,10 @@ const examples: Record<string, Example> = {
     title: 'Begin with explicit boundaries',
     summary: 'The structure compares the value with each bound and returns the appropriate integer.',
     actions: [
-      { need: 'Parameters', choice: 'I32 × 3', meaning: 'Receive a value and two bounds' },
-      { need: 'Expression', choice: 'Clamp', meaning: 'Apply both boundaries' },
-      { need: 'Lower.bound', choice: 'Max(@1, @2)', meaning: 'Raise values below minimum' },
-      { need: 'Upper.bound', choice: 'Min(result, @3)', meaning: 'Lower values above maximum' },
+      { need: 'Inputs', choice: 'I32 × 3', meaning: 'Receive a value and two bounds' },
+      { need: 'Operation', choice: 'Clamp', meaning: 'Apply both boundaries' },
+      { need: 'Lower limit', choice: 'Max(@1, @2)', meaning: 'Raise values below minimum' },
+      { need: 'Upper limit', choice: 'Min(result, @3)', meaning: 'Lower values above maximum' },
     ],
     symbols: '@0 → clamp    @1 → value    @2 → min    @3 → max',
     code: ['fn clamp(value: i32, min: i32, max: i32) -> i32 {', '    value.max(min).min(max)', '}'],
@@ -127,9 +127,9 @@ const examples: Record<string, Example> = {
     title: 'Make invalid input explicit',
     summary: 'A result type separates a valid bounded value from an invalid range.',
     actions: [
-      { need: 'Return.type', choice: 'Result<I32, Error>', meaning: 'Represent validation failure' },
-      { need: 'Guard', choice: 'Gt(@2, @3)', meaning: 'Detect reversed bounds' },
-      { need: 'Success', choice: 'Ok(Clamp)', meaning: 'Return a validated value' },
+      { need: 'Result', choice: 'Result<I32, Error>', meaning: 'Represent validation failure' },
+      { need: 'Validation check', choice: 'Gt(@2, @3)', meaning: 'Detect reversed bounds' },
+      { need: 'Valid result', choice: 'Ok(Clamp)', meaning: 'Return a validated value' },
     ],
     symbols: '@0 → clamp    @1 → value    @2 → min    @3 → max',
     code: ['fn clamp(value: i32, min: i32, max: i32) -> Result<i32, &\'static str> {', '    if min > max { return Err("min must not exceed max"); }', '    Ok(value.max(min).min(max))', '}'],
@@ -141,9 +141,9 @@ const examples: Record<string, Example> = {
     title: 'Finish with one boundary value',
     summary: 'An inclusive range groups the two bounds in the function signature.',
     actions: [
-      { need: 'Param.type', choice: 'RangeInclusive<I32>', meaning: 'Group minimum and maximum' },
-      { need: 'Bindings', choice: 'Range.into_inner', meaning: 'Read both bounds once' },
-      { need: 'Success', choice: 'Ok(Clamp)', meaning: 'Return the bounded value' },
+      { need: 'Input', choice: 'RangeInclusive<I32>', meaning: 'Group minimum and maximum' },
+      { need: 'Read values', choice: 'Range.into_inner', meaning: 'Read both bounds once' },
+      { need: 'Valid result', choice: 'Ok(Clamp)', meaning: 'Return the bounded value' },
     ],
     symbols: '@0 → clamp    @1 → value    @2 → range',
     code: ['fn clamp(value: i32, range: std::ops::RangeInclusive<i32>) -> Result<i32, &\'static str> {', '    let (min, max) = range.into_inner();', '    if min > max { return Err("range must not be empty"); }', '    Ok(value.max(min).min(max))', '}'],
@@ -190,7 +190,7 @@ export default function App() {
     <button className="mobile-menu" type="button" aria-label="Open pathway navigation" onClick={() => setSidebarOpen(true)}><MenuIcon /></button>
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
       <div className="sidebar-top">
-        <button className="brand brand-button" type="button" aria-label="MoPaPPa home" onClick={reset}><span className="brand-mark">M</span><span>MoPaPPa</span></button>
+        <button className="brand brand-button" type="button" aria-label="Shasha home" onClick={reset}><span className="brand-mark">S</span><span>Shasha</span></button>
         <button className="sidebar-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
       </div>
       <button className="new-chat" type="button" onClick={reset}><PlusIcon /> New conversation</button>
@@ -200,23 +200,23 @@ export default function App() {
           <span>{path.number}</span><div><strong>{path.title}</strong><small>3 steps</small></div>
         </button>)}
       </nav>
-      <div className="sidebar-note"><span>Deterministic by design</span><p>Every button follows an authored route. There is no free-text prompt or open-ended chat response.</p><a href="#method">Read the method <span aria-hidden="true">↗</span></a></div>
-      <div className="profile"><span className="profile-mark">B</span><div><strong>Research workspace</strong><small>Constrained Rust IR</small></div><span aria-hidden="true">•••</span></div>
+      <div className="sidebar-note"><span>Fixed paths by design</span><p>Every button follows a written route. There is no free-text prompt or open-ended chat response.</p><a href="#method">Read the method <span aria-hidden="true">↗</span></a></div>
+      <div className="profile"><span className="profile-mark">B</span><div><strong>Research workspace</strong><small>Rust code examples</small></div><span aria-hidden="true">•••</span></div>
     </aside>
     {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
 
     <main className="main-area">
-      <header className="topbar"><div><strong>Structural interpreter</strong><span>Guided conversation</span></div><span className="route-count">3 fixed pathways</span></header>
+      <header className="topbar"><div><strong>Guided code examples</strong><span>Guided conversation</span></div><span className="route-count">3 fixed pathways</span></header>
       <div className="conversation" id="top">
         <div className="conversation-inner">
         {!current && <>
           <section className="explainer" id="method" aria-labelledby="explainer-title">
-            <span className="eyebrow">Guided structural examples</span>
+            <span className="eyebrow">Guided examples</span>
             <h1 id="explainer-title">The model chooses meaning.<br />The system handles syntax.</h1>
             <p className="explainer-copy">Choose an example below to begin. Each response offers a fixed next message, so the conversation stays predictable and reviewable.</p>
             <div className="method-line" aria-label="Example method">
               <div><span>01</span><strong>Prompt</strong><p>Choose one of three authored messages.</p></div>
-              <div><span>02</span><strong>Inspect</strong><p>See the typed decisions behind the output.</p></div>
+              <div><span>02</span><strong>Inspect</strong><p>See the choices behind the output.</p></div>
               <div><span>03</span><strong>Reply</strong><p>Continue with a suggested follow-up message.</p></div>
             </div>
           </section>
@@ -235,12 +235,12 @@ export default function App() {
               <article className="message assistant-message">
                 <div className="assistant-avatar" aria-hidden="true">M</div>
                 <div className="assistant-content">
-                  <div className="message-label">MoPaPPa · Step {messageIndex + 1} of 3</div>
+                  <div className="message-label">Shasha · Step {messageIndex + 1} of 3</div>
                   <h2>{example.title}</h2>
                   <p className="response-summary">{example.summary}</p>
                   <div className="answer-grid">
                     <section className="trace" aria-labelledby={`trace-${id}`}>
-                      <div className="section-heading"><span id={`trace-${id}`}>Structural decisions</span><small>{example.actions.length} decisions</small></div>
+                      <div className="section-heading"><span id={`trace-${id}`}>Function details</span><small>{example.actions.length} items</small></div>
                       <div className="trace-list">{example.actions.map((action) => <div className="trace-row revealed" key={`${id}-${action.need}`}>
                         <span className="trace-check"><CheckIcon /></span><div><code>{action.need}</code><p>{action.meaning}</p></div><strong>{action.choice}</strong>
                       </div>)}</div>
@@ -248,10 +248,10 @@ export default function App() {
                     <section className="code-panel" aria-labelledby={`code-${id}`}>
                       <div className="code-heading"><div><span>rust</span><small id={`code-${id}`}>Rendered output</small></div><button type="button" onClick={() => copyCode(example)}><CopyIcon /> {copiedId === id ? 'Copied' : 'Copy'}</button></div>
                       <pre>{example.code.map((line, index) => <span className="code-line" key={`${line}-${index}`}><i>{index + 1}</i><code>{line}</code></span>)}</pre>
-                      <div className="code-meta"><span>Symbols</span><code>{example.symbols}</code></div>
+                      <div className="code-meta"><span>Names used</span><code>{example.symbols}</code></div>
                     </section>
                   </div>
-                  <div className="validity-note"><CheckIcon /><p><strong>Valid by construction.</strong> Punctuation, braces, and indentation are supplied by the renderer.</p></div>
+                  <div className="validity-note"><CheckIcon /><p><strong>Ready to use.</strong> The app supplies punctuation, braces, and indentation.</p></div>
                 </div>
               </article>
             </div>
@@ -260,18 +260,16 @@ export default function App() {
         </div>
       </div>
 
-      <div className="choice-tray-wrap" aria-label="Suggested messages">
+      {(!current || current.next) && <div className="choice-tray-wrap" aria-label="Suggested messages">
         <div className="choice-tray">
-          <div className="choice-tray-heading"><span>{current ? current.next ? 'Choose your next message' : 'Path complete' : 'Start with an example'}</span><small>{current ? activePath?.title : '3 pathways available'}</small></div>
+          <div className="choice-tray-heading"><span>{current ? 'Choose your next message' : 'Start with an example'}</span><small>{current ? activePath?.title : '3 pathways available'}</small></div>
           <div className="choice-options">
             {!current && pathways.map((path) => <button type="button" key={path.id} onClick={() => start(path)}><span>{examples[path.start].request}</span><ArrowIcon /></button>)}
             {current?.next && <button type="button" onClick={() => continueTo(current.next!.id)}><span>{current.next.label}</span><ArrowIcon /></button>}
-            {current && !current.next && pathways.filter((path) => path.id !== current.pathway).map((path) => <button type="button" key={path.id} onClick={() => start(path)}><span>Try: {examples[path.start].request}</span><ArrowIcon /></button>)}
-            {current && !current.next && <button type="button" className="secondary-choice" onClick={reset}><span>Start a new conversation</span><PlusIcon /></button>}
           </div>
         </div>
         <p>Choose a predefined message to continue this deterministic demo.</p>
-      </div>
+      </div>}
     </main>
   </div>
 }

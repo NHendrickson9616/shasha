@@ -1,3 +1,5 @@
+after each change you make please commit to github (but don't push) with the change. this should be each small incremental change.
+
 ## Website design exclusions
 
 - Do not use purple and blue gradients: Especially gradient-filled hero backgrounds

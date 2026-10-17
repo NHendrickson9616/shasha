@@ -1,6 +1,6 @@
-# MoPaPPa hackathon starter
+# Shasha hackathon starter
 
-A small, **independent** Rust/Candle starter based on `/home/moi/code/MoPaPPa`. The original repository is not required to build this one. It keeps the key separation: a causal transformer scores *typed structural decisions*; a controller restricts legal actions; deterministic code renders the result as Rust. This is a deliberately tiny teaching slice, not a copy of the full model.
+A small, **independent** Rust/Candle starter for Shasha. It keeps the key separation: a causal transformer scores possible choices; a controller keeps each step valid; deterministic code renders the result as Rust. This is a deliberately tiny teaching slice, not a copy of the full model.
 
 ## Run
 

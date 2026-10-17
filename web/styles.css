@@ -75,7 +75,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColo
 .topbar div span { color: var(--subtle); font-size: 11px; }
 
 .conversation { min-height: 0; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; scrollbar-color: #c9c2ba transparent; }
-.conversation-inner { width: min(100% - 48px, 960px); margin: 0 auto; padding: 54px 0 74px; }
+.conversation-inner { width: min(100% - 48px, 1200px); margin: 0 auto; padding: 54px 0 74px; }
 
 .explainer { padding-bottom: 49px; border-bottom: 1px solid var(--line); }
 .eyebrow { display: block; margin-bottom: 18px; color: var(--red); font-size: 11px; font-weight: 700; letter-spacing: .115em; text-transform: uppercase; }
