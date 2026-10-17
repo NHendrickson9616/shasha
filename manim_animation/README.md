@@ -28,7 +28,7 @@ For a quick iteration render:
 ```
 
 The final video is written to
-`media/videos/shasha_explainer/1080p30/shasha_explainer.mp4`.
+`media/videos/shasha_explainer/1080p30/ShashaExplainer.mp4`.
 
 ## Storyboard
 

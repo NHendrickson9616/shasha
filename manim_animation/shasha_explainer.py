@@ -191,7 +191,7 @@ def flow_arrow(start, end, color: str = SUBTLE):
 
 
 class ShashaExplainer(MovingCameraScene):
-    """A 90-second, silent explainer designed for a 16:9 presentation."""
+    """A 50-second, silent explainer designed for a 16:9 presentation."""
 
     def construct(self):
         self.camera.background_color = PAPER
