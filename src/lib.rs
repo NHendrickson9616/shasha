@@ -1,4 +1,4 @@
-//! Small, independent starter inspired by shasha's structured generation path.
+//! Small, independent starter for Shasha's structured generation path.
 
 pub mod controller;
 pub mod model;

@@ -1,0 +1,14 @@
+{
+  "name": "shasha-slidev-slideshow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "slidev --open",
+    "build": "slidev build",
+    "export": "slidev export --output ShashaSlides.pdf"
+  },
+  "devDependencies": {
+    "@slidev/cli": "53.0.0",
+    "@slidev/theme-default": "0.25.0"
+  }
+}
